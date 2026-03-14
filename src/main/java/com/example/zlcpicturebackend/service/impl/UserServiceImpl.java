@@ -21,8 +21,11 @@ import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.Reader;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import static com.example.zlcpicturebackend.constant.UserConstant.USER_LOGIN_STATE;
@@ -146,6 +149,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return true;
     }
 
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
+    }
+
     /**
      * 获得脱敏后的用户信息
      *
@@ -178,6 +186,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      */
     @Override
     public String getEncryptPassword(String userPassword) {
+        new HashMap<>();
         final String SALT = "zlc";
         return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
     }
