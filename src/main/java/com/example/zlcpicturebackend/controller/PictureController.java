@@ -50,6 +50,18 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
     /**
+     * 通过URL上传图片（可重新上传）
+     */
+    @PostMapping("/upload/url")
+    public BaseResponse<PictureVO> uploadPictureByUrl(
+            @RequestBody PictureUploadRequest pictureUploadRequest,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String fileUrl = pictureUploadRequest.getFileUrl();
+        PictureVO pictureVO = pictureService.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+        return ResultUtils.success(pictureVO);
+    }
+    /**
      * 删除图片
      */
     @PostMapping("/delete")
@@ -73,7 +85,7 @@ public class PictureController {
     }
 
     /**
-     * 更新图片（仅管理员可用）
+     * 更新图片
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
@@ -157,7 +169,7 @@ public class PictureController {
         // 查询数据库
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
                 pictureService.getQueryWrapper(pictureQueryRequest));
-        // 获取封装类
+        // 获取封装类x
         return ResultUtils.success(pictureService.getPictureVOPage(picturePage, request));
     }
 

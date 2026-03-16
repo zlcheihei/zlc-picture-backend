@@ -18,7 +18,7 @@ public class CosManager {
     @Resource
     private CosClientConfig cosClientConfig;
   
-    @Resource  
+    @Resource
     private COSClient cosClient;
   
     // ... 一些操作 COS 的方法

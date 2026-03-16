@@ -4,6 +4,11 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.http.HttpStatus;
+import cn.hutool.http.HttpUtil;
+import cn.hutool.http.Method;
 import com.example.zlcpicturebackend.config.CosClientConfig;
 import com.example.zlcpicturebackend.exception.BusinessException;
 import com.example.zlcpicturebackend.exception.ErrorCode;
@@ -11,27 +16,34 @@ import com.example.zlcpicturebackend.exception.ThrowUtils;
 import com.example.zlcpicturebackend.model.dto.file.UploadPictureResult;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
+import com.qcloud.cos.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 文件服务
+ * @deprecated 已废弃，改为使用upload包的模版方法优化
+ */
 @Service
 @Slf4j
-public class FileManager {  
-  
-    @Resource  
-    private CosClientConfig cosClientConfig;
-  
+public class FileManager {
+
     @Resource
-    private CosManager cosManager;  
-  
-    // ...
+    private CosClientConfig cosClientConfig;
+
+    @Resource
+    private CosManager cosManager;
+
     /**
      * 上传图片
      *
@@ -74,6 +86,93 @@ public class FileManager {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
         } finally {
             this.deleteTempFile(file);
+        }
+    }
+
+    public UploadPictureResult uploadPictureByUrl(String fileUrl, String uploadPathPrefix) {
+        validPicture(fileUrl);
+        String uuid = RandomUtil.randomString(16);
+        String originFilename = FileUtil.mainName(fileUrl);
+        String uploadFilename = String.format("%s_%s.%s", DateUtil.formatDate(new Date()), uuid,
+                FileUtil.getSuffix(originFilename));
+        String uploadPath = String.format("/%s/%s", uploadPathPrefix, uploadFilename);
+        File file = null;
+        try {
+            file = File.createTempFile(uploadPath, null);
+            HttpUtil.downloadFile(fileUrl,file);
+            // 上传图片
+            PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
+            ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            // 封装返回结果
+            UploadPictureResult uploadPictureResult = new UploadPictureResult();
+            int picWidth = imageInfo.getWidth();
+            int picHeight = imageInfo.getHeight();
+            double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
+            uploadPictureResult.setPicName(FileUtil.mainName(originFilename));
+            uploadPictureResult.setPicWidth(picWidth);
+            uploadPictureResult.setPicHeight(picHeight);
+            uploadPictureResult.setPicScale(picScale);
+            uploadPictureResult.setPicFormat(imageInfo.getFormat());
+            uploadPictureResult.setPicSize(FileUtil.size(file));
+            uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + uploadPath);
+            return uploadPictureResult;
+        } catch (Exception e) {
+            log.error("图片上传到对象存储失败", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
+        } finally {
+            this.deleteTempFile(file);
+        }
+    }
+
+    /**
+     * 校验文件
+     *
+     * @param fileUrl url地址
+     */
+    public void validPicture(String fileUrl) {
+        ThrowUtils.throwIf(StrUtil.isNotBlank(fileUrl), ErrorCode.PARAMS_ERROR, "文件地址不能为空");
+        try {
+            //1.校验url格式
+            new URL(fileUrl);
+        } catch (MalformedURLException e) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件地址格式不正确");
+        }
+        //2.校验url协议
+        ThrowUtils.throwIf(
+                !(fileUrl.startsWith("http://")) || !(fileUrl.startsWith("https://"))
+                , ErrorCode.PARAMS_ERROR
+                , "仅支持HTTP或HTTPS协议的文件地址");
+        //3.发送head请求以验证文件是否存在
+        HttpResponse response = null;
+        try {
+            response = HttpUtil.createRequest(Method.HEAD, fileUrl).execute();
+            //未正常返回
+            if (response.getStatus() != HttpStatus.HTTP_OK) {
+                return;
+            }
+            //4.校验文件类型
+            String contentType = response.header("Content-Type");
+            if (StrUtil.isNotBlank(contentType)) {
+                //允许的图片类型
+                final List<String> ALLOW_CONTENT_TYPE = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/webp");
+                ThrowUtils.throwIf(!ALLOW_CONTENT_TYPE.contains(contentType.toLowerCase()), ErrorCode.PARAMS_ERROR, "文件类型错误");
+            }
+            //5.校验文件大小
+            String contentLengthStr = response.header("Content-Length");
+            if (StrUtil.isNotBlank(contentLengthStr)) {
+                try {
+                    long contentLength = Long.parseLong(contentLengthStr);
+                    //限制大小为2MB
+                    final long TWO_MB = 2 * 1024 * 1024L;
+                    ThrowUtils.throwIf(contentLength > TWO_MB, ErrorCode.PARAMS_ERROR, "文件大小不能超过2MB");
+                } catch (NumberFormatException e) {
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "大小哥是错误");
+                }
+            }
+        } finally {
+            if (response != null) {
+                response.close();
+            }
         }
     }
 
