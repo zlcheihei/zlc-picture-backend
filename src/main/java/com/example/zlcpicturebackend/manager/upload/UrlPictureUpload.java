@@ -18,10 +18,10 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
-public class UrlPictureUpload extends PictureUploadTemplate {  
-    @Override  
-    protected void validPicture(Object inputSource) {  
-        String fileUrl = (String) inputSource;  
+public class UrlPictureUpload extends PictureUploadTemplate {
+    @Override
+    protected String validPicture(Object inputSource) {
+        String fileUrl = (String) inputSource;
         ThrowUtils.throwIf(StrUtil.isBlank(fileUrl), ErrorCode.PARAMS_ERROR, "文件地址不能为空");
         try {
             //1.校验url格式
@@ -36,14 +36,15 @@ public class UrlPictureUpload extends PictureUploadTemplate {
                 , "仅支持HTTP或HTTPS协议的文件地址");
         //3.发送head请求以验证文件是否存在
         HttpResponse response = null;
+        String contentType = "";
         try {
             response = HttpUtil.createRequest(Method.HEAD, fileUrl).execute();
             //未正常返回
             if (response.getStatus() != HttpStatus.HTTP_OK) {
-                return;
+                return "";
             }
             //4.校验文件类型
-            String contentType = response.header("Content-Type");
+            contentType = response.header("Content-Type");
             if (StrUtil.isNotBlank(contentType)) {
                 //允许的图片类型
                 final List<String> ALLOW_CONTENT_TYPE = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/webp");
@@ -66,19 +67,41 @@ public class UrlPictureUpload extends PictureUploadTemplate {
                 response.close();
             }
         }
-    }  
-  
-    @Override  
-    protected String getOriginFilename(Object inputSource) {  
-        String fileUrl = (String) inputSource;  
+        return getImagePrefix(contentType);
+    }
+
+    private String getImagePrefix(String contentType) {
+        String imagePrefix;
+        switch (contentType) {
+            case "image/jpeg":
+                imagePrefix = "jpeg";
+                break;
+            case "image/jpg":
+                imagePrefix = "jpg";
+                break;
+            case "image/png":
+                imagePrefix = "png";
+                break;
+            case "image/webp":
+                imagePrefix = "webp";
+                break;
+            default:
+                imagePrefix = "";
+        }
+        return imagePrefix;
+    }
+
+    @Override
+    protected String getOriginFilename(Object inputSource) {
+        String fileUrl = (String) inputSource;
         // 从 URL 中提取文件名  
         return FileUtil.mainName(fileUrl);
-    }  
-  
-    @Override  
+    }
+
+    @Override
     protected void processFile(Object inputSource, File file) throws Exception {
-        String fileUrl = (String) inputSource;  
+        String fileUrl = (String) inputSource;
         // 下载文件到临时目录  
         HttpUtil.downloadFile(fileUrl, file);
-    }  
+    }
 }
