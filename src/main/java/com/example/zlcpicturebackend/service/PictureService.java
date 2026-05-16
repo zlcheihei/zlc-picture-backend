@@ -2,14 +2,12 @@ package com.example.zlcpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.zlcpicturebackend.model.dto.picture.PictureQueryRequest;
-import com.example.zlcpicturebackend.model.dto.picture.PictureReviewRequest;
-import com.example.zlcpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.example.zlcpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.example.zlcpicturebackend.model.dto.picture.*;
 import com.example.zlcpicturebackend.model.enity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.zlcpicturebackend.model.enity.User;
 import com.example.zlcpicturebackend.model.vo.PictureVO;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
@@ -21,6 +19,9 @@ import javax.servlet.http.HttpServletRequest;
 */
 public interface PictureService extends IService<Picture> {
 
+
+    @Async
+    void clearPictureFile(Picture oldPicture);
 
     PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
@@ -39,6 +40,10 @@ public interface PictureService extends IService<Picture> {
      */
     void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
 
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    void deletePicture(long pictureId, User loginUser);
+
     /**
      * 批量创建和抓取图片
      * @param pictureUploadByBatchRequest
@@ -47,4 +52,6 @@ public interface PictureService extends IService<Picture> {
      */
     Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest,User loginUser);
     void fillReviewParams(Picture picture, User loginUser);
+
+    void checkPictureAuth(User loginUser, Picture picture);
 }

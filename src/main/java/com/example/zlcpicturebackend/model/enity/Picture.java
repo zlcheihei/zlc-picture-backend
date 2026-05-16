@@ -70,6 +70,15 @@ public class Picture implements Serializable {
      * 图片格式
      */
     private String picFormat;
+    /**
+     * 缩略图 url
+     */
+    private String thumbnailUrl;
+
+    /**
+     * 空间id
+     */
+    private Long spaceId;
 
     /**
      * 创建用户 id

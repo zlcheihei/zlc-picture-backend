@@ -9,7 +9,10 @@ public class PictureUploadByBatchRequest {
      * 搜索词
      */
     private String searchText;
-
+    /**
+     * 空间id
+     */
+    private Long spaceId;
     /**
      * 抓取数量
      */

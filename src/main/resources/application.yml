@@ -2,6 +2,10 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    #    30天过期
+    session:
+      cookie:
+        max-age: 2592000
 spring:
   # 开放更大的文件上传体积
   servlet:
@@ -17,6 +21,17 @@ spring:
     url: jdbc:mysql://localhost:3306/picture
     username: root
     password: 123456
+  # Redis 配置
+  redis:
+    database: 0
+    host: 192.168.53.130
+    port: 6379
+    timeout: 5000
+  #session配置
+  session:
+    store-type: redis
+    #    30天过期
+    timeout: 2592000
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
